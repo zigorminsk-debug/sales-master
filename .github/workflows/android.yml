@@ -60,7 +60,7 @@ jobs:
         run: |
           if [[ -z "$ANDROID_KEYSTORE_BASE64" && -z "$ANDROID_KEY_ALIAS" && -z "$ANDROID_STORE_PASSWORD" && -z "$ANDROID_KEY_PASSWORD" ]]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "No permanent signing key configured; the artifact will be a debug-signed test APK."
+            echo "No permanent signing key configured; the debug variant will only be compiled for CI validation. No APK will be published."
             exit 0
           fi
 
@@ -108,7 +108,7 @@ jobs:
           test -f "$apk_path"
           cp "$apk_path" "dist/sales-master-${BUILD_NUMBER}.apk"
 
-      - name: Build installable debug APK for testing
+      - name: Compile debug variant for CI validation only
         if: steps.signing.outputs.configured != 'true'
         env:
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
@@ -118,10 +118,19 @@ jobs:
             -PbuildNumber="$BUILD_NUMBER" \
             -PappVersion="$APP_VERSION" \
             :app:assembleDebug
-          mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/sales-master-${BUILD_NUMBER}.apk"
 
-      - name: Upload APK artifact
+      - name: Explain missing persistent signing key
+        if: steps.signing.outputs.configured != 'true'
+        run: |
+          {
+            echo "## No installable APK was published"
+            echo "The app compiled successfully, but this build has no permanent signing key."
+            echo "A GitHub-hosted runner's debug key is temporary and cannot safely update an APK from another run."
+            echo "Add the four Android signing secrets from README.md to publish an update-ready APK."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload permanently signed APK artifact
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: sales-master-${{ steps.version.outputs.build_number }}
