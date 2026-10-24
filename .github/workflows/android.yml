@@ -96,7 +96,9 @@ jobs:
           else
             status=$?
             cat "$log_file"
-            tail -n 45 "$log_file" | python3 -c 'import sys; s=sys.stdin.read().strip().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"); print("::error title=Gradle build failed::" + s)'
+            diagnostic=$(grep -E '^(FAILURE:|.*What went wrong:|.*error:|.*Unresolved reference|.*Could not resolve|.*Could not find|.*Execution failed for task)' "$log_file" | tail -n 18 || true)
+            if [[ -z "$diagnostic" ]]; then diagnostic=$(tail -n 12 "$log_file"); fi
+            printf '%s' "$diagnostic" | python3 -c 'import sys; s=sys.stdin.read().strip()[-3000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"); print("::error title=Gradle build failed::" + s)'
             exit "$status"
           fi
           mkdir -p dist
