@@ -60,7 +60,7 @@ jobs:
         run: |
           if [[ -z "$ANDROID_KEYSTORE_BASE64" && -z "$ANDROID_KEY_ALIAS" && -z "$ANDROID_STORE_PASSWORD" && -z "$ANDROID_KEY_PASSWORD" ]]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "No signing secrets configured; this run will produce an unsigned APK artifact."
+            echo "No permanent signing key configured; the artifact will be a debug-signed test APK."
             exit 0
           fi
 
@@ -77,7 +77,8 @@ jobs:
           echo "keystore_path=$keystore" >> "$GITHUB_OUTPUT"
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build release APK
+      - name: Build signed release APK
+        if: steps.signing.outputs.configured == 'true'
         env:
           ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -104,9 +105,21 @@ jobs:
           fi
           mkdir -p dist
           apk_path="app/build/outputs/apk/release/app-release.apk"
-          if [[ ! -f "$apk_path" ]]; then apk_path="app/build/outputs/apk/release/app-release-unsigned.apk"; fi
           test -f "$apk_path"
           cp "$apk_path" "dist/sales-master-${BUILD_NUMBER}.apk"
+
+      - name: Build installable debug APK for testing
+        if: steps.signing.outputs.configured != 'true'
+        env:
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          gradle --no-daemon --stacktrace --console=plain \
+            -PbuildNumber="$BUILD_NUMBER" \
+            -PappVersion="$APP_VERSION" \
+            :app:assembleDebug
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/sales-master-${BUILD_NUMBER}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
