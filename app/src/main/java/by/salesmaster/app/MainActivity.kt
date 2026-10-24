@@ -30,6 +30,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import by.salesmaster.app.data.Marketplace
 import by.salesmaster.app.data.MarketplaceRepository
+import by.salesmaster.app.data.MarketplaceWebBridge
 import by.salesmaster.app.data.ProductOffer
 import by.salesmaster.app.data.ProductStore
 import by.salesmaster.app.data.SearchFailure
@@ -48,7 +49,7 @@ class MainActivity : Activity() {
     private val ioExecutor = Executors.newFixedThreadPool(3)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val store by lazy { ProductStore(applicationContext) }
-    private val repository by lazy { MarketplaceRepository() }
+    private val repository by lazy { MarketplaceRepository(applicationContext) }
     private val selectedMarkets = linkedSetOf(Marketplace.WILDBERRIES, Marketplace.OZON)
 
     private lateinit var queryInput: EditText
@@ -67,9 +68,12 @@ class MainActivity : Activity() {
     private var availableUpdate: AvailableUpdate? = null
     private var pendingUpdateApk: File? = null
     private var lastSearchQuery: String = ""
+    private var currentOffers: List<ProductOffer> = emptyList()
+    private var currentErrors: List<SearchFailure> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MarketplaceWebBridge.init(applicationContext)
         window.statusBarColor = COLOR_BACKGROUND
         window.navigationBarColor = COLOR_BACKGROUND
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
@@ -152,11 +156,11 @@ class MainActivity : Activity() {
     private fun buildSearchCard(parent: LinearLayout) {
         val panel = card()
         panel.addView(text("Найти товар", 19f, COLOR_INK, bold = true))
-        panel.addView(text("Введите название или вставьте ссылку на товар", 13f, COLOR_MUTED).apply {
+        panel.addView(text("Введите название, артикул или вставьте ссылку на товар WB / Ozon", 13f, COLOR_MUTED).apply {
             setPadding(0, dp(4), 0, dp(11))
         })
 
-        queryInput = input("Например, робот-пылесос или ссылка", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        queryInput = input("Название, артикул или ссылка на товар", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         panel.addView(queryInput, matchWrap())
 
         panel.addView(text("Площадки", 12f, COLOR_MUTED, bold = true).apply {
@@ -282,12 +286,14 @@ class MainActivity : Activity() {
     }
 
     private fun renderResults(offers: List<ProductOffer>, errors: List<SearchFailure>) {
+        currentOffers = offers
+        currentErrors = errors
         resultsContainer.removeAllViews()
         if (offers.isEmpty()) {
             val message = if (errors.isEmpty()) {
                 "Ничего не найдено. Попробуйте изменить запрос."
             } else {
-                "Не удалось автоматически загрузить цены. Площадки могут временно ограничивать запросы. Откройте выдачу напрямую:"
+                "Площадка запросила антибот-проверку. Пройдите быструю проверку прямо в приложении, чтобы автоматически забрать цены:"
             }
             resultsContainer.addView(text(message, 14f, COLOR_MUTED).apply {
                 setLineSpacing(dp(2).toFloat(), 1f)
@@ -306,11 +312,31 @@ class MainActivity : Activity() {
             })
             val failedMarkets = errors.map { it.marketplace }.distinct()
             failedMarkets.forEach { market ->
-                val button = actionButton("Открыть поиск: ${market.displayName}", COLOR_ACCENT)
-                button.textSize = 12f
-                button.minHeight = dp(42)
-                button.setOnClickListener { openMarketplaceSearch(market, lastSearchQuery) }
-                resultsContainer.addView(button, matchWrap().apply { topMargin = dp(7) })
+                val verifyButton = actionButton("Пройти проверку и загрузить цены: ${market.displayName}", COLOR_ACCENT)
+                verifyButton.textSize = 12f
+                verifyButton.minHeight = dp(44)
+                verifyButton.setOnClickListener {
+                    MarketplaceWebBridge.showInteractiveDialog(this, market, lastSearchQuery) { loadedOffers ->
+                        val merged = (currentOffers + loadedOffers)
+                            .distinctBy { it.marketplace to (it.externalId ?: it.productUrl) }
+                            .sortedBy { it.price }
+                        val remainingErrors = currentErrors.filterNot { it.marketplace == market }
+                        renderResults(merged, remainingErrors)
+                        toast("Загружено предложений ${market.displayName}: ${loadedOffers.size}")
+                    }
+                }
+                resultsContainer.addView(verifyButton, matchWrap().apply { topMargin = dp(8) })
+
+                val externalLink = TextView(this).apply {
+                    text = "Открыть во внешнем браузере: ${market.displayName}"
+                    textSize = 12f
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    setTextColor(COLOR_ACCENT)
+                    gravity = Gravity.CENTER
+                    setPadding(dp(8), dp(8), dp(8), dp(6))
+                    setOnClickListener { openMarketplaceSearch(market, lastSearchQuery) }
+                }
+                resultsContainer.addView(externalLink, matchWrap())
             }
         }
     }

@@ -36,6 +36,7 @@ data class TrackedProduct(
 data class SearchFailure(
     val marketplace: Marketplace,
     val message: String,
+    val challengeRequired: Boolean = false,
 )
 
 data class SearchResponse(

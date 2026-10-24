@@ -92,7 +92,7 @@ jobs:
           if gradle --no-daemon --stacktrace --console=plain \
             -PbuildNumber="$BUILD_NUMBER" \
             -PappVersion="$APP_VERSION" \
-            :app:assembleRelease >"$log_file" 2>&1; then
+            :app:testDebugUnitTest :app:assembleRelease >"$log_file" 2>&1; then
             cat "$log_file"
           else
             status=$?
@@ -117,7 +117,7 @@ jobs:
           gradle --no-daemon --stacktrace --console=plain \
             -PbuildNumber="$BUILD_NUMBER" \
             -PappVersion="$APP_VERSION" \
-            :app:assembleDebug
+            :app:testDebugUnitTest :app:assembleDebug
 
       - name: Explain missing persistent signing key
         if: steps.signing.outputs.configured != 'true'

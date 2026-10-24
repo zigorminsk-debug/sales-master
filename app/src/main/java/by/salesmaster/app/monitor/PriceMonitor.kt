@@ -30,7 +30,7 @@ internal data class MonitorSummary(
 internal class PriceMonitor(context: Context) {
     private val appContext = context.applicationContext
     private val store = ProductStore(appContext)
-    private val repository = MarketplaceRepository()
+    private val repository = MarketplaceRepository(appContext)
 
     fun checkAll(): MonitorSummary {
         val products = store.all()
