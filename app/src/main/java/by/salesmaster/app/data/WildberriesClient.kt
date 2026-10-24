@@ -32,6 +32,7 @@ internal class WildberriesClient {
                 lastError = IOException("по запросу не найдено товаров с распознанной ценой")
             } catch (exception: Exception) {
                 lastError = exception
+                if (HttpJson.isAccessLimited(exception)) break
             }
         }
         throw IOException(

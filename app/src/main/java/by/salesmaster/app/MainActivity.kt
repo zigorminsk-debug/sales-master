@@ -20,6 +20,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -259,6 +260,9 @@ class MainActivity : Activity() {
             queryInput.requestFocus()
             return
         }
+        (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.hideSoftInputFromWindow(queryInput.windowToken, 0)
+        queryInput.clearFocus()
         lastSearchQuery = query
         val markets = selectedMarkets.toSet()
         searchButton.isEnabled = false

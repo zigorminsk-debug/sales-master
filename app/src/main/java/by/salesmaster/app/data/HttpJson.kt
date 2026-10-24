@@ -11,6 +11,13 @@ internal object HttpJson {
     private const val MAX_REDIRECTS = 6
     private const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
+    fun isAccessLimited(exception: Throwable): Boolean =
+        generateSequence(exception) { it.cause }.any { cause ->
+            val message = cause.message.orEmpty()
+            "HTTP 403" in message || "HTTP 429" in message ||
+                "временно ограничила автоматические запросы" in message.lowercase()
+        }
+
     fun get(url: String, referer: String? = null): String {
         val start = URL(url)
         var current = start

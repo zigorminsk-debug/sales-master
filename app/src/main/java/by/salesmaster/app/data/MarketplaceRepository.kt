@@ -37,8 +37,9 @@ class MarketplaceRepository {
             .joinToString(" ")
             .lowercase(Locale.ROOT)
         return when {
-            "403" in messages || "429" in messages || "ограничил" in messages ->
-                "временно ограничен автоматический поиск"
+            "http 403" in messages -> "площадка отклонила автоматический запрос (HTTP 403)"
+            "http 429" in messages -> "площадка просит снизить частоту запросов (HTTP 429)"
+            "ограничил" in messages -> "площадка временно ограничила автоматический поиск"
             "redirect" in messages || "перенаправ" in messages || "follow-up" in messages ->
                 "площадка перенаправляет запрос или временно недоступна"
             "html" in messages || "страницу защиты" in messages || "status line" in messages ->

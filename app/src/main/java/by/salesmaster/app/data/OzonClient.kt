@@ -17,7 +17,7 @@ internal class OzonClient {
         val apiPaths = listOf("composer-api.bx", "entrypoint-api.bx")
         var lastError: Exception? = null
 
-        apiPaths.forEach { apiPath ->
+        for (apiPath in apiPaths) {
             try {
                 val endpoint = "https://www.ozon.ru/api/$apiPath/page/json/v2?url=$encodedPath"
                 val body = HttpJson.get(endpoint, "https://www.ozon.ru/")
@@ -26,18 +26,22 @@ internal class OzonClient {
                 lastError = IOException("ответ API не содержит карточек с ценами")
             } catch (exception: Exception) {
                 lastError = exception
+                if (HttpJson.isAccessLimited(exception)) break
             }
         }
 
-        // Some Ozon API routes redirect or return an anti-bot page. Try the public search/product page once;
-        // JSON-LD on that page can still provide product names, links, and prices.
-        try {
-            val pageUrl = "https://www.ozon.ru$path"
-            val page = HttpJson.get(pageUrl, "https://www.ozon.ru/")
-            val offers = OzonOfferParser.parseResponse(page)
-            if (offers.isNotEmpty()) return offers.sortedBy { it.price }.take(30)
-        } catch (exception: Exception) {
-            lastError = exception
+        // If API routes did not return useful data but were not explicitly blocked, try the public page once.
+        // JSON-LD or product metadata on that page may still provide names, links, and prices.
+        val shouldTryPageFallback = lastError?.let { !HttpJson.isAccessLimited(it) } ?: true
+        if (shouldTryPageFallback) {
+            try {
+                val pageUrl = "https://www.ozon.ru$path"
+                val page = HttpJson.get(pageUrl, "https://www.ozon.ru/")
+                val offers = OzonOfferParser.parseResponse(page)
+                if (offers.isNotEmpty()) return offers.sortedBy { it.price }.take(30)
+            } catch (exception: Exception) {
+                lastError = exception
+            }
         }
 
         throw IOException(
