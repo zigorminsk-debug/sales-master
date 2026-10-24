@@ -103,7 +103,10 @@ jobs:
             exit "$status"
           fi
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/sales-master-${BUILD_NUMBER}.apk"
+          apk_path="app/build/outputs/apk/release/app-release.apk"
+          if [[ ! -f "$apk_path" ]]; then apk_path="app/build/outputs/apk/release/app-release-unsigned.apk"; fi
+          test -f "$apk_path"
+          cp "$apk_path" "dist/sales-master-${BUILD_NUMBER}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
