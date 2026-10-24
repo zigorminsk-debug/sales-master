@@ -85,11 +85,20 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
+        shell: bash
         run: |
-          gradle --no-daemon --stacktrace \
+          log_file="$RUNNER_TEMP/gradle-build.log"
+          if gradle --no-daemon --stacktrace --console=plain \
             -PbuildNumber="$BUILD_NUMBER" \
             -PappVersion="$APP_VERSION" \
-            :app:assembleRelease
+            :app:assembleRelease >"$log_file" 2>&1; then
+            cat "$log_file"
+          else
+            status=$?
+            cat "$log_file"
+            tail -n 45 "$log_file" | python3 -c 'import sys; s=sys.stdin.read().strip().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"); print("::error title=Gradle build failed::" + s)'
+            exit "$status"
+          fi
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/sales-master-${BUILD_NUMBER}.apk"
 
