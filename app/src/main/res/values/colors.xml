@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="radar_background">#F4F6FB</color>
+    <color name="radar_navy">#18263D</color>
+    <color name="radar_muted">#718096</color>
+    <color name="radar_accent">#525FD4</color>
+    <color name="radar_green">#16866E</color>
+    <color name="radar_white">#FFFFFF</color>
+</resources>

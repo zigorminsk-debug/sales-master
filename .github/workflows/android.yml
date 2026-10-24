@@ -1,0 +1,124 @@
+name: Android build and release
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Assign a unique build number
+        id: version
+        shell: bash
+        run: |
+          build_number=$((GITHUB_RUN_NUMBER * 1000 + GITHUB_RUN_ATTEMPT))
+          app_version="1.0.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "Build number: $build_number ($app_version)"
+
+      - name: Prepare persistent release signing key
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" && -z "$ANDROID_KEY_ALIAS" && -z "$ANDROID_STORE_PASSWORD" && -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "No signing secrets configured; this run will produce an unsigned APK artifact."
+            exit 0
+          fi
+
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_STORE_PASSWORD ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required signing secret: $name" >&2
+              exit 1
+            fi
+          done
+
+          keystore="$RUNNER_TEMP/sales-master-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          echo "keystore_path=$keystore" >> "$GITHUB_OUTPUT"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          gradle --no-daemon --stacktrace \
+            -PbuildNumber="$BUILD_NUMBER" \
+            -PappVersion="$APP_VERSION" \
+            :app:assembleRelease
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/sales-master-${BUILD_NUMBER}.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sales-master-${{ steps.version.outputs.build_number }}
+          path: dist/sales-master-${{ steps.version.outputs.build_number }}.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare signed release asset
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.signing.outputs.configured == 'true'
+        env:
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        run: cp "dist/sales-master-${BUILD_NUMBER}.apk" dist/sales-master.apk
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.signing.outputs.configured == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.app_version }}
+          name: ЦенаРадар ${{ steps.version.outputs.app_version }} (сборка ${{ steps.version.outputs.build_number }})
+          body: |
+            Автоматическая Android-сборка из `main`.
+
+            Номер сборки: `${{ steps.version.outputs.build_number }}`.
+            APK подписан постоянным ключом из GitHub Secrets.
+          files: dist/sales-master.apk
+          generate_release_notes: true
+          make_latest: true
+          fail_on_unmatched_files: true

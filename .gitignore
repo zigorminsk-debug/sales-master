@@ -1,0 +1,16 @@
+# Gradle / Android
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+
+# Signing material must never be committed
+*.jks
+*.keystore
+release-key.properties
+app/signing/
+
+# Local outputs
+*.apk
+*.aab
