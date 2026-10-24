@@ -113,11 +113,23 @@ jobs:
         env:
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
+        shell: bash
         run: |
-          gradle --no-daemon --stacktrace --console=plain \
+          log_file="$RUNNER_TEMP/gradle-debug-build.log"
+          if gradle --no-daemon --stacktrace --console=plain \
             -PbuildNumber="$BUILD_NUMBER" \
             -PappVersion="$APP_VERSION" \
-            :app:testDebugUnitTest :app:assembleDebug
+            :app:testDebugUnitTest :app:assembleDebug >"$log_file" 2>&1; then
+            cat "$log_file"
+          else
+            status=$?
+            cat "$log_file"
+            diagnostic=$(grep -E '(^e:|^w:|^> |Caused by:|FAILURE:|What went wrong:|error:|FAILED|Unresolved reference|Could not resolve|Could not find|Execution failed for task|Compilation error)' "$log_file" | tail -n 14 | tr '\r\n' ' ' || true)
+            if [[ -z "$diagnostic" ]]; then diagnostic=$(tail -n 10 "$log_file" | tr '\r\n' ' '); fi
+            diagnostic=${diagnostic//'%'/'%25'}
+            echo "::error title=Gradle debug build failed::$diagnostic"
+            exit "$status"
+          fi
 
       - name: Explain missing persistent signing key
         if: steps.signing.outputs.configured != 'true'

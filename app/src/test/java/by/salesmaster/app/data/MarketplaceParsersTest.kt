@@ -9,7 +9,7 @@ import org.junit.Test
 class MarketplaceParsersTest {
 
     @Test
-    fun `wildberries parses v4 card response with top-level products and nested sizes price`() {
+    fun wildberriesParsesV4CardResponse() {
         val rawJson = """
             {
               "products": [
@@ -43,7 +43,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `wildberries parses basket CDN card json and price history`() {
+    fun wildberriesParsesBasketCdnCardAndPriceHistory() {
         val cardJson = """
             {
               "imt_id": 204918231,
@@ -74,7 +74,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `wildberries extracts product id from urls, shared text and article numbers`() {
+    fun wildberriesExtractsProductIdFromUrlsAndSkus() {
         assertEquals(
             "273059631",
             WildberriesClient.extractProductId("Посмотри на WB https://www.wildberries.ru/catalog/273059631/detail.aspx?targetUrl=GP"),
@@ -92,7 +92,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `ozon parses search results widgetStates with mainState textAtom and priceV2`() {
+    fun ozonParsesSearchResultsWidgetStatesWithMainState() {
         val composerSearchJson = """
             {
               "widgetStates": {
@@ -112,7 +112,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `ozon parses single product card when webProductHeading and webPrice are separate widgets`() {
+    fun ozonParsesSingleProductCardWithSeparateHeadingAndPriceWidgets() {
         val composerCardJson = """
             {
               "widgetStates": {
@@ -135,7 +135,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `ozon extracts target path from product urls, shared messages and skus`() {
+    fun ozonExtractsTargetPathFromUrlsAndSkus() {
         assertEquals(
             "/product/naushniki-sony-847362519/",
             OzonClient.extractTargetPath("Отличная цена! https://www.ozon.ru/product/naushniki-sony-847362519/?avtc=1"),
@@ -147,7 +147,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `httpJson recognizes same marketplace across subdomains and cdn hosts`() {
+    fun httpJsonRecognizesSameMarketplaceAcrossSubdomainsAndCdn() {
         assertTrue(HttpJson.sameMarketplace("www.wildberries.ru", "search.wb.ru"))
         assertTrue(HttpJson.sameMarketplace("www.wildberries.ru", "card.wb.ru"))
         assertTrue(HttpJson.sameMarketplace("www.wildberries.ru", "basket-15.wbbasket.ru"))
@@ -158,7 +158,7 @@ class MarketplaceParsersTest {
     }
 
     @Test
-    fun `webBridge cleans WebView user agent markers and decodes evaluateJavascript strings`() {
+    fun webBridgeCleansUserAgentAndDecodesEvaluateJavascriptResult() {
         val rawUa = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UQ1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.39 Mobile Safari/537.36"
         val cleaned = MarketplaceWebBridge.cleanWebViewUserAgent(rawUa)
         assertFalse("; wv" in cleaned)

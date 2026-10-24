@@ -7,8 +7,6 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -52,7 +50,7 @@ internal object MarketplaceWebBridge {
     private var appContext: Context? = null
 
     private val headlessLock = ReentrantLock()
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val challengeFlags = ConcurrentHashMap<Marketplace, Boolean>()
 
     fun init(context: Context) {
@@ -281,8 +279,9 @@ internal object MarketplaceWebBridge {
         parser: (JSONObject) -> List<ProductOffer>,
     ): List<ProductOffer> {
         val context = appContext ?: return emptyList()
+        val mainLooper = runCatching { Looper.getMainLooper() }.getOrNull() ?: return emptyList()
         // Never block the main thread if called from UI thread by mistake
-        if (Looper.myLooper() == Looper.getMainLooper()) return emptyList()
+        if (Looper.myLooper() == mainLooper) return emptyList()
 
         if (!headlessLock.tryLock(HEADLESS_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
             return emptyList()
@@ -475,8 +474,9 @@ internal object MarketplaceWebBridge {
                 }
             }
             Marketplace.OZON -> {
+                val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.name())
                 val path = OzonClient.extractTargetPath(query)
-                    ?: "/search/?text=${Uri.encode(query.trim())}&from_global=true&sorting=price"
+                    ?: "/search/?text=$encoded&from_global=true&sorting=price"
                 InteractiveTarget(
                     pageUrl = "https://www.ozon.ru$path",
                     apiPath = path,
