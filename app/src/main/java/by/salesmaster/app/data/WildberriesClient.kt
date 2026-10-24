@@ -9,16 +9,35 @@ import java.nio.charset.StandardCharsets
 internal class WildberriesClient {
     fun search(query: String): List<ProductOffer> {
         val productId = idFromUrl(query)
-        if (productId != null) return fetchById(productId)?.let(::listOf).orEmpty()
+        if (productId != null) {
+            return try {
+                listOf(fetchById(productId) ?: throw IOException("карточка не найдена"))
+            } catch (exception: Exception) {
+                throw IOException("Wildberries не удалось загрузить эту карточку. Откройте ссылку на площадке.", exception)
+            }
+        }
 
         val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
-        val endpoint = "https://search.wb.ru/exactmatch/ru/common/v18/search" +
-            "?ab_testing=false&appType=1&curr=rub&dest=-1257786" +
-            "&query=$encodedQuery&resultset=catalog&sort=priceup&spp=30&suppressSpellcheck=false"
-        val response = JSONObject(HttpJson.get(endpoint, "https://www.wildberries.ru/"))
-        val products = response.optJSONObject("data")?.optJSONArray("products")
-            ?: throw IOException("Wildberries не вернул список товаров")
-        return parseProducts(products).sortedBy { it.price }.take(30)
+        var lastError: Exception? = null
+        for (version in listOf(18, 17, 16)) {
+            try {
+                val endpoint = "https://search.wb.ru/exactmatch/ru/common/v$version/search" +
+                    "?ab_testing=false&appType=1&curr=rub&dest=-1257786" +
+                    "&query=$encodedQuery&resultset=catalog&sort=priceup&spp=30&suppressSpellcheck=false"
+                val response = JSONObject(HttpJson.get(endpoint, "https://www.wildberries.ru/"))
+                val products = response.optJSONObject("data")?.optJSONArray("products")
+                    ?: throw IOException("ответ не содержит списка товаров")
+                val offers = parseProducts(products).sortedBy { it.price }
+                if (offers.isNotEmpty()) return offers.take(30)
+                lastError = IOException("по запросу не найдено товаров с распознанной ценой")
+            } catch (exception: Exception) {
+                lastError = exception
+            }
+        }
+        throw IOException(
+            "Wildberries временно не отдал каталог. Откройте поиск на площадке или повторите позже.",
+            lastError,
+        )
     }
 
     fun latest(product: TrackedProduct): ProductOffer? {

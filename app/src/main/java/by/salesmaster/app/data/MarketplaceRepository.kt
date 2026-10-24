@@ -8,7 +8,7 @@ class MarketplaceRepository {
 
     fun search(query: String, marketplaces: Set<Marketplace>): SearchResponse {
         val offers = mutableListOf<ProductOffer>()
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<SearchFailure>()
         marketplaces.forEach { marketplace ->
             try {
                 val found = when (marketplace) {
@@ -17,7 +17,7 @@ class MarketplaceRepository {
                 }
                 offers += found
             } catch (exception: Exception) {
-                errors += "${marketplace.displayName}: ${exception.message ?: "не удалось получить цены"}"
+                errors += SearchFailure(marketplace, readableFailure(exception))
             }
         }
         return SearchResponse(
@@ -29,6 +29,22 @@ class MarketplaceRepository {
     fun latest(product: TrackedProduct): ProductOffer? = when (product.marketplace) {
         Marketplace.WILDBERRIES -> wildberries.latest(product)
         Marketplace.OZON -> ozon.latest(product)
+    }
+
+    private fun readableFailure(exception: Exception): String {
+        val messages = generateSequence<Throwable>(exception) { it.cause }
+            .mapNotNull { it.message }
+            .joinToString(" ")
+            .lowercase(Locale.ROOT)
+        return when {
+            "403" in messages || "429" in messages || "ограничил" in messages ->
+                "временно ограничен автоматический поиск"
+            "redirect" in messages || "перенаправ" in messages || "follow-up" in messages ->
+                "площадка перенаправляет запрос или временно недоступна"
+            "html" in messages || "страницу защиты" in messages || "status line" in messages ->
+                "площадка вернула страницу защиты вместо каталога"
+            else -> "каталог временно недоступен или изменился формат ответа"
+        }
     }
 
     companion object {

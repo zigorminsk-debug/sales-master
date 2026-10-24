@@ -31,6 +31,7 @@ import by.salesmaster.app.data.Marketplace
 import by.salesmaster.app.data.MarketplaceRepository
 import by.salesmaster.app.data.ProductOffer
 import by.salesmaster.app.data.ProductStore
+import by.salesmaster.app.data.SearchFailure
 import by.salesmaster.app.data.TrackedProduct
 import by.salesmaster.app.data.formatRubles
 import by.salesmaster.app.monitor.MonitorScheduler
@@ -64,6 +65,7 @@ class MainActivity : Activity() {
 
     private var availableUpdate: AvailableUpdate? = null
     private var pendingUpdateApk: File? = null
+    private var lastSearchQuery: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -257,6 +259,7 @@ class MainActivity : Activity() {
             queryInput.requestFocus()
             return
         }
+        lastSearchQuery = query
         val markets = selectedMarkets.toSet()
         searchButton.isEnabled = false
         searchButton.text = "Ищем…"
@@ -274,13 +277,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun renderResults(offers: List<ProductOffer>, errors: List<String>) {
+    private fun renderResults(offers: List<ProductOffer>, errors: List<SearchFailure>) {
         resultsContainer.removeAllViews()
         if (offers.isEmpty()) {
             val message = if (errors.isEmpty()) {
                 "Ничего не найдено. Попробуйте изменить запрос."
             } else {
-                "Не удалось получить результаты. Площадки могут ограничивать автоматические запросы."
+                "Не удалось автоматически загрузить цены. Площадки могут временно ограничивать запросы. Откройте выдачу напрямую:"
             }
             resultsContainer.addView(text(message, 14f, COLOR_MUTED).apply {
                 setLineSpacing(dp(2).toFloat(), 1f)
@@ -292,8 +295,19 @@ class MainActivity : Activity() {
             offers.take(20).forEach { offer -> resultsContainer.addView(offerView(offer), matchWrap().apply { bottomMargin = dp(9) }) }
         }
         if (errors.isNotEmpty()) {
-            val errorMessage = errors.joinToString("\n")
-            resultsContainer.addView(text("\nЧасть площадок не ответила: $errorMessage", 11f, COLOR_MUTED))
+            val message = errors.distinctBy { it.marketplace }
+                .joinToString("\n") { "${it.marketplace.displayName}: ${it.message}" }
+            resultsContainer.addView(text("\n${if (offers.isEmpty()) "Статус площадок:" else "Часть площадок не ответила:"}\n$message", 12f, COLOR_MUTED).apply {
+                setLineSpacing(dp(2).toFloat(), 1f)
+            })
+            val failedMarkets = errors.map { it.marketplace }.distinct()
+            failedMarkets.forEach { market ->
+                val button = actionButton("Открыть поиск: ${market.displayName}", COLOR_ACCENT)
+                button.textSize = 12f
+                button.minHeight = dp(42)
+                button.setOnClickListener { openMarketplaceSearch(market, lastSearchQuery) }
+                resultsContainer.addView(button, matchWrap().apply { topMargin = dp(7) })
+            }
         }
     }
 
@@ -506,6 +520,17 @@ class MainActivity : Activity() {
         runCatching {
             startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, Uri.parse(url)), "Открыть товар"))
         }.onFailure { toast("Не удалось открыть ссылку") }
+    }
+
+    private fun openMarketplaceSearch(marketplace: Marketplace, query: String) {
+        val encodedQuery = Uri.encode(query)
+        val url = when (marketplace) {
+            Marketplace.WILDBERRIES -> "https://www.wildberries.ru/catalog/0/search.aspx?search=$encodedQuery"
+            Marketplace.OZON -> "https://www.ozon.ru/search/?text=$encodedQuery"
+        }
+        runCatching {
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, Uri.parse(url)), "Поиск на ${marketplace.displayName}"))
+        }.onFailure { toast("Не удалось открыть площадку") }
     }
 
     private fun requestNotificationPermissionIfNeeded() {

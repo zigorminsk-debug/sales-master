@@ -12,13 +12,38 @@ import java.util.Locale
 /** Ozon's consumer web composer is not a published API; the parser is intentionally tolerant. */
 internal class OzonClient {
     fun search(query: String): List<ProductOffer> {
-        val path = productPath(query) ?: "/search/?text=$query"
+        val path = productPath(query) ?: "/search/?text=${Uri.encode(query)}"
         val encodedPath = URLEncoder.encode(path, StandardCharsets.UTF_8.name())
-        val endpoint = "https://www.ozon.ru/api/composer-api.bx/page/json/v2?url=$encodedPath"
-        val response = JSONObject(HttpJson.get(endpoint, "https://www.ozon.ru/"))
-        val offers = OzonOfferParser.parse(response)
-        if (offers.isEmpty()) throw IOException("Ozon не вернул товары с распознанными ценами")
-        return offers.sortedBy { it.price }.take(30)
+        val apiPaths = listOf("composer-api.bx", "entrypoint-api.bx")
+        var lastError: Exception? = null
+
+        apiPaths.forEach { apiPath ->
+            try {
+                val endpoint = "https://www.ozon.ru/api/$apiPath/page/json/v2?url=$encodedPath"
+                val body = HttpJson.get(endpoint, "https://www.ozon.ru/")
+                val offers = OzonOfferParser.parseResponse(body)
+                if (offers.isNotEmpty()) return offers.sortedBy { it.price }.take(30)
+                lastError = IOException("ответ API не содержит карточек с ценами")
+            } catch (exception: Exception) {
+                lastError = exception
+            }
+        }
+
+        // Some Ozon API routes redirect or return an anti-bot page. Try the public search/product page once;
+        // JSON-LD on that page can still provide product names, links, and prices.
+        try {
+            val pageUrl = "https://www.ozon.ru$path"
+            val page = HttpJson.get(pageUrl, "https://www.ozon.ru/")
+            val offers = OzonOfferParser.parseResponse(page)
+            if (offers.isNotEmpty()) return offers.sortedBy { it.price }.take(30)
+        } catch (exception: Exception) {
+            lastError = exception
+        }
+
+        throw IOException(
+            "Ozon временно не отдал каталог. Откройте поиск на площадке или повторите позже.",
+            lastError,
+        )
     }
 
     fun latest(product: TrackedProduct): ProductOffer? {
@@ -43,11 +68,49 @@ private object OzonOfferParser {
     private const val MAX_DEPTH = 24
     private const val MAX_OFFERS = 100
 
-    fun parse(root: JSONObject): List<ProductOffer> {
+    fun parseResponse(body: String): List<ProductOffer> {
         val offers = LinkedHashMap<String, ProductOffer>()
-        visit(root, offers, 0)
+        runCatching { JSONObject(body) }.getOrNull()?.let { visit(it, offers, 0) }
+        if (offers.isEmpty()) runCatching { JSONArray(body) }.getOrNull()?.let { visit(it, offers, 0) }
+
+        if (offers.isEmpty()) {
+            val scripts = Regex("(?is)<script\\b[^>]*>(.*?)</script>").findAll(body)
+            scripts.forEach { match ->
+                val script = decodeHtml(match.groupValues[1].trim())
+                parseEmbeddedJson(script)?.let { visit(it, offers, 0) }
+            }
+        }
+        if (offers.isEmpty()) parseProductMeta(body)?.let { offers[it.productUrl] = it }
         return offers.values.toList()
     }
+
+    private fun parseProductMeta(html: String): ProductOffer? {
+        val values = mutableMapOf<String, String>()
+        Regex("(?is)<meta\\b[^>]*>").findAll(html).forEach { match ->
+            val tag = match.value
+            val key = Regex("(?i)\\b(?:property|name)\\s*=\\s*['\\\"]([^'\\\"]+)['\\\"]")
+                .find(tag)?.groupValues?.getOrNull(1)?.lowercase() ?: return@forEach
+            val content = Regex("(?i)\\bcontent\\s*=\\s*['\\\"]([^'\\\"]*)['\\\"]")
+                .find(tag)?.groupValues?.getOrNull(1) ?: return@forEach
+            values[key] = decodeHtml(content)
+        }
+        val title = values["og:title"] ?: values["twitter:title"] ?: return null
+        val url = values["og:url"] ?: values["twitter:url"] ?: return null
+        val rawPrice = values["product:price:amount"] ?: values["og:price:amount"] ?: return null
+        val price = parsePrice(rawPrice) ?: return null
+        val canonical = if (url.startsWith("http", ignoreCase = true)) url else "https://www.ozon.ru$url"
+        if (!canonical.contains("ozon.ru", ignoreCase = true)) return null
+        val id = Regex("(?:-|/)(\\d{5,})(?:/|$|\\?)").find(canonical)?.groupValues?.getOrNull(1)
+        return ProductOffer(Marketplace.OZON, title.trim(), price, canonical, id)
+    }
+
+    private fun decodeHtml(value: String): String = value
+        .replace("&quot;", "\"", ignoreCase = true)
+        .replace("&#34;", "\"", ignoreCase = true)
+        .replace("&amp;", "&", ignoreCase = true)
+        .replace("&#x2F;", "/", ignoreCase = true)
+        .replace("&#47;", "/", ignoreCase = true)
+        .replace("\\u002F", "/", ignoreCase = true)
 
     private fun visit(node: Any?, offers: LinkedHashMap<String, ProductOffer>, depth: Int) {
         if (depth > MAX_DEPTH || offers.size >= MAX_OFFERS) return

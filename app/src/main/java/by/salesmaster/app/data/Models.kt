@@ -33,9 +33,14 @@ data class TrackedProduct(
     val lastCheckedAt: Long? = null,
 )
 
+data class SearchFailure(
+    val marketplace: Marketplace,
+    val message: String,
+)
+
 data class SearchResponse(
     val offers: List<ProductOffer>,
-    val errors: List<String>,
+    val errors: List<SearchFailure>,
 )
 
 fun formatRubles(value: Double): String =
