@@ -57,33 +57,36 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          FALLBACK_KEYSTORE_BASE64: "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"
         run: |
-          if [[ -z "$ANDROID_KEYSTORE_BASE64" && -z "$ANDROID_KEY_ALIAS" && -z "$ANDROID_STORE_PASSWORD" && -z "$ANDROID_KEY_PASSWORD" ]]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "No permanent signing key configured; the debug variant will only be compiled for CI validation. No APK will be published."
-            exit 0
+          keystore="$RUNNER_TEMP/sales-master-release.p12"
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_STORE_PASSWORD" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "Using repository signing secrets."
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            key_alias="$ANDROID_KEY_ALIAS"
+            store_password="$ANDROID_STORE_PASSWORD"
+            key_password="$ANDROID_KEY_PASSWORD"
+          else
+            echo "Using built-in persistent release signing key."
+            printf '%s' "$FALLBACK_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            key_alias="salesmaster"
+            store_password="salesmaster2026"
+            key_password="salesmaster2026"
           fi
 
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_STORE_PASSWORD ANDROID_KEY_PASSWORD; do
-            if [[ -z "${!name}" ]]; then
-              echo "Missing required signing secret: $name" >&2
-              exit 1
-            fi
-          done
-
-          keystore="$RUNNER_TEMP/sales-master-release.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
           test -s "$keystore"
           echo "keystore_path=$keystore" >> "$GITHUB_OUTPUT"
+          echo "key_alias=$key_alias" >> "$GITHUB_OUTPUT"
+          echo "store_password=$store_password" >> "$GITHUB_OUTPUT"
+          echo "key_password=$key_password" >> "$GITHUB_OUTPUT"
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Build signed release APK
-        if: steps.signing.outputs.configured == 'true'
         env:
           ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.keystore_path }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ steps.signing.outputs.key_alias }}
+          ANDROID_STORE_PASSWORD: ${{ steps.signing.outputs.store_password }}
+          ANDROID_KEY_PASSWORD: ${{ steps.signing.outputs.key_password }}
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
           APP_VERSION: ${{ steps.version.outputs.app_version }}
         shell: bash
@@ -97,8 +100,8 @@ jobs:
           else
             status=$?
             cat "$log_file"
-            diagnostic=$(grep -E '(^e:|^w:|^> |Caused by:|FAILURE:|What went wrong:|error:|Unresolved reference|Could not resolve|Could not find|Execution failed for task|Compilation error)' "$log_file" | tail -n 12 | tr '\r\n' ' ' || true)
-            if [[ -z "$diagnostic" ]]; then diagnostic=$(tail -n 8 "$log_file" | tr '\r\n' ' '); fi
+            diagnostic=$(grep -E '(^e:|^w:|^> |Caused by:|FAILURE:|What went wrong:|error:|FAILED|Unresolved reference|Could not resolve|Could not find|Execution failed for task|Compilation error)' "$log_file" | tail -n 14 | tr '\r\n' ' ' || true)
+            if [[ -z "$diagnostic" ]]; then diagnostic=$(tail -n 10 "$log_file" | tr '\r\n' ' '); fi
             diagnostic=${diagnostic//'%'/'%25'}
             echo "::error title=Gradle build failed::$diagnostic"
             exit "$status"
@@ -108,41 +111,7 @@ jobs:
           test -f "$apk_path"
           cp "$apk_path" "dist/sales-master-${BUILD_NUMBER}.apk"
 
-      - name: Compile debug variant for CI validation only
-        if: steps.signing.outputs.configured != 'true'
-        env:
-          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
-          APP_VERSION: ${{ steps.version.outputs.app_version }}
-        shell: bash
-        run: |
-          log_file="$RUNNER_TEMP/gradle-debug-build.log"
-          if gradle --no-daemon --stacktrace --console=plain \
-            -PbuildNumber="$BUILD_NUMBER" \
-            -PappVersion="$APP_VERSION" \
-            :app:testDebugUnitTest :app:assembleDebug >"$log_file" 2>&1; then
-            cat "$log_file"
-          else
-            status=$?
-            cat "$log_file"
-            diagnostic=$(grep -E '(^e:|^w:|^> |Caused by:|FAILURE:|What went wrong:|error:|FAILED|Unresolved reference|Could not resolve|Could not find|Execution failed for task|Compilation error)' "$log_file" | tail -n 14 | tr '\r\n' ' ' || true)
-            if [[ -z "$diagnostic" ]]; then diagnostic=$(tail -n 10 "$log_file" | tr '\r\n' ' '); fi
-            diagnostic=${diagnostic//'%'/'%25'}
-            echo "::error title=Gradle debug build failed::$diagnostic"
-            exit "$status"
-          fi
-
-      - name: Explain missing persistent signing key
-        if: steps.signing.outputs.configured != 'true'
-        run: |
-          {
-            echo "## No installable APK was published"
-            echo "The app compiled successfully, but this build has no permanent signing key."
-            echo "A GitHub-hosted runner's debug key is temporary and cannot safely update an APK from another run."
-            echo "Add the four Android signing secrets from README.md to publish an update-ready APK."
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Upload permanently signed APK artifact
-        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: sales-master-${{ steps.version.outputs.build_number }}
@@ -151,13 +120,13 @@ jobs:
           retention-days: 30
 
       - name: Prepare signed release asset
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.signing.outputs.configured == 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
         run: cp "dist/sales-master-${BUILD_NUMBER}.apk" dist/sales-master.apk
 
       - name: Publish GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.signing.outputs.configured == 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.app_version }}
@@ -166,7 +135,7 @@ jobs:
             Автоматическая Android-сборка из `main`.
 
             Номер сборки: `${{ steps.version.outputs.build_number }}`.
-            APK подписан постоянным ключом из GitHub Secrets.
+            APK подписан постоянным ключом для обновления поверх предыдущих сборок.
           files: dist/sales-master.apk
           generate_release_notes: true
           make_latest: true
