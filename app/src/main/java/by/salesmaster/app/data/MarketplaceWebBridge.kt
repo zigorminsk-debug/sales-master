@@ -569,7 +569,8 @@ internal object MarketplaceWebBridge {
                     .replace(Regex("\\s+"), " ")
                     .replace(Regex("(?i)\\s*[—\\-|]\\s*купить на ozon.*$"), "")
                     .trim()
-                    .ifBlank { if (id != null) "Товар Ozon $id" else continue }
+                    .ifBlank { if (id != null) "Товар Ozon $id" else "" }
+                if (title.isBlank()) continue
                 add(
                     ProductOffer(
                         marketplace = Marketplace.OZON,
